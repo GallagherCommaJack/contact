@@ -2,7 +2,7 @@ CREATE TABLE symptoms (
   id      TEXT NOT NULL,
   symptom TEXT NOT NULL,
   ts      TIMESTAMP NOT NULL,
-  PRIMARY KEY(symptom_id, symptom)
+  PRIMARY KEY(id, symptom)
 );
 
 CREATE INDEX symptom_by_id ON symptoms USING HASH (id);
@@ -15,5 +15,5 @@ CREATE TABLE interactions (
   ts_uploaded TIMESTAMP NOT NULL 
 );
 
-CREATE INDEX interactions_by_uploaded_geo_occurred_id ON interactions(ts_uploaded, geo, ts_occurred, id);
+CREATE INDEX interactions_by_uploaded_geo_id ON interactions(ts_uploaded, geo, id);
 CREATE INDEX interactions_by_case ON interactions USING HASH(symptom_id);
