@@ -13,7 +13,7 @@ async fn raw_get_interactions<'a>(
     interaction_ids: &[&str]
 ) -> Result<Vec<Row>, Error> {
     let stmt = conn
-        .prepare_typed(sql!("get_interactions"), types!(TIMESTAMP, TEXT))
+        .prepare_typed(sql!("get_interactions"), types!(TIMESTAMP, TEXT, TEXT))
         .await?;
 
     let res = stream::iter(geos)
