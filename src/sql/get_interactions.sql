@@ -1,5 +1,5 @@
 SELECT
-  id, geo, symptom_id
+  id
 WHERE
   ts_uploaded BETWEEN $1 AND now()
   AND geo LIKE $2

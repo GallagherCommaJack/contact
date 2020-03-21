@@ -31,6 +31,17 @@ async fn raw_get_interactions<'a>(
     Ok(res)
 }
 
+async fn raw_confirm_interactions<'a>(
+    conn: &'a Client,
+    uuids: &[&str],
+) -> Result<Vec<Row>, Error> {
+    let stmt = conn
+        .prepare_typed(sql!("confirm_interactions"), types!(TEXT))
+        .await?;
+
+    Ok(conn.query(&stmt, params!(uuids)).await?)
+}   
+
 async fn raw_get_symptoms(conn: &Client, id: &str) -> Result<Option<Row>, Error> {
     let stmt = conn
         .prepare_typed(sql!("get_symptoms"), types!(TEXT))
