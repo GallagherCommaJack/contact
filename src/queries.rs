@@ -10,6 +10,7 @@ async fn raw_get_interactions<'a>(
     conn: &'a Client,
     last_check: DateTime<Utc>,
     geos: &[&str],
+    interaction_ids: &[&str]
 ) -> Result<Vec<Row>, Error> {
     let stmt = conn
         .prepare_typed(sql!("get_interactions"), types!(TIMESTAMP, TEXT))
@@ -19,7 +20,7 @@ async fn raw_get_interactions<'a>(
         .map(|geo| {
             let stmt = &stmt;
             async move {
-                let params: &[&dyn postgres_types::ToSql] = params!(last_check, geo);
+                let params: &[&dyn postgres_types::ToSql] = params!(last_check, geo, interaction_ids);
                 conn.query_raw(stmt, params.iter().map(|x| *x)).await
             }
         })

@@ -31,12 +31,13 @@ CREATE INDEX symptom_by_description ON symptoms(symptom);
 
 CREATE TABLE interactions (
   id          TEXT NOT NULL PRIMARY KEY,
+  qtr_id      TEXT NOT NULL,
   geo         TEXT NOT NULL,
   case_id  TEXT NOT NULL,
   ts_uploaded TIMESTAMP with time zone NOT NULL 
 );
 
-CREATE INDEX interactions_by_uploaded_geo_id ON interactions(ts_uploaded, geo, id);
+CREATE INDEX interactions_by_uploaded_geo_id ON interactions(ts_uploaded, geo, qtr_id);
 CREATE INDEX interactions_by_case ON interactions USING HASH(case_id);
 
 CREATE TABLE confirmed_exposures (
