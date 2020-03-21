@@ -10,38 +10,29 @@ async fn raw_get_interactions<'a>(
     conn: &'a Client,
     last_check: DateTime<Utc>,
     geos: &[&str],
-    interaction_ids: &[&str]
+    interaction_ids: &[&str],
 ) -> Result<Vec<Row>, Error> {
     let stmt = conn
-        .prepare_typed(sql!("get_interactions"), types!(TIMESTAMP, TEXT, TEXT))
+        .prepare_typed(
+            sql!("get_interactions"),
+            types!(TIMESTAMP, TEXT_ARRAY, TEXT_ARRAY),
+        )
         .await?;
 
-    let res = stream::iter(geos)
-        .map(|geo| {
-            let stmt = &stmt;
-            async move {
-                let params: &[&dyn postgres_types::ToSql] = params!(last_check, geo, interaction_ids);
-                conn.query_raw(stmt, params.iter().map(|x| *x)).await
-            }
-        })
-        .buffer_unordered(CONCURRENT_REQS)
-        .try_flatten()
-        .try_collect()
+    let res = conn
+        .query(&stmt, params!(last_check, geos, interaction_ids))
         .await?;
 
     Ok(res)
 }
 
-async fn raw_confirm_interactions<'a>(
-    conn: &'a Client,
-    uuids: &[&str],
-) -> Result<Vec<Row>, Error> {
+async fn raw_confirm_interactions<'a>(conn: &'a Client, uuids: &[&str]) -> Result<Vec<Row>, Error> {
     let stmt = conn
         .prepare_typed(sql!("confirm_interactions"), types!(TEXT))
         .await?;
 
     Ok(conn.query(&stmt, params!(uuids)).await?)
-}   
+}
 
 async fn raw_get_symptoms(conn: &Client, id: &str) -> Result<Option<Row>, Error> {
     let stmt = conn

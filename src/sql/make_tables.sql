@@ -33,7 +33,7 @@ CREATE TABLE interactions (
   id          TEXT NOT NULL PRIMARY KEY,
   qtr_id      TEXT NOT NULL,
   geo         TEXT NOT NULL,
-  case_id  TEXT NOT NULL,
+  case_id     TEXT NOT NULL,
   ts_uploaded TIMESTAMP with time zone NOT NULL 
 );
 
