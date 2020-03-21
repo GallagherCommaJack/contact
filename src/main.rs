@@ -6,6 +6,9 @@ use serde::*;
 use std::{collections::HashSet, ops::DerefMut};
 use warp::Filter;
 
+pub(crate) mod macros;
+mod queries;
+
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 static POOL: Lazy<deadpool_redis::Pool> = Lazy::new(|| {
