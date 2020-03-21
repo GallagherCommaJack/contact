@@ -1,0 +1,1 @@
+DELETE FROM interactions WHERE ts_uploaded < now() - INTERVAL '3 days'

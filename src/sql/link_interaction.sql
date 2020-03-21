@@ -3,8 +3,7 @@ INSERT INTO
     id,
     geo,
     symptom_id,
-    ts_occurred,
     ts_uploaded
   )
-VALUES($id, $geo, $symptom_id, $ts_occurred, now())
+VALUES($id, $geo, $symptom_id, now())
 
