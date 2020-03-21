@@ -39,6 +39,14 @@ CREATE TABLE interactions (
 CREATE INDEX interactions_by_uploaded_geo_id ON interactions(ts_uploaded, geo, id);
 CREATE INDEX interactions_by_case ON interactions USING HASH(case_id);
 
+CREATE TABLE confirmed_exposures (
+  id            SERIAL PRIMARY KEY,
+  donor_id      TEXT REFERENCES clients(id),
+  recipient_id  TEXT REFERENCES clients(id),
+  total_minutes INTEGER,
+  close_contact BOOLEAN
+);
+
 CREATE TABLE transmission_chains (
   left_id       TEXT NOT NULL,
   right_id      TEXT NOT NULL,
