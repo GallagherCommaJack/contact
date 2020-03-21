@@ -2,7 +2,7 @@ CREATE TABLE symptoms (
   id      TEXT NOT NULL,
   symptom TEXT NOT NULL,
   ts      TIMESTAMP NOT NULL,
-  PRIMARY KEY(symptom_id, symptom)
+  PRIMARY KEY(id, symptom)
 );
 
 CREATE INDEX symptom_by_id ON symptoms USING HASH (id);

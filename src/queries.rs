@@ -1,30 +1,40 @@
 use super::*;
 use chrono::*;
-use tokio_postgres::GenericClient;
+use deadpool_postgres::ClientWrapper as Client;
+use futures::stream::{self, Stream, StreamExt, TryStreamExt};
+use tokio_postgres::{types::Type, Row, RowStream};
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Interaction<'a> {
-    #[serde(borrow)]
-    id: &'a str,
-    #[serde(borrow)]
-    geo: &'a str,
-    #[serde(borrow)]
-    symptom_id: &'a str,
-}
+const CONCURRENT_REQS: usize = 10;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Symptom<'a> {
-    #[serde(borrow)]
-    id: &'a str,
-    #[serde(borrow)]
-    symptom: &'a str,
-    ts: DateTime<Utc>,
-}
-
-async fn get_interactions<C: GenericClient>(
-    conn: &C,
+async fn raw_get_interactions<'a>(
+    conn: &'a Client,
     last_check: DateTime<Utc>,
-    geo: &str,
-) -> Result<Vec<String>, Error> {
-    todo!()
+    geos: &[&str],
+) -> Result<Vec<Row>, Error> {
+    let stmt = conn
+        .prepare_typed(sql!("get_interactions"), types!(TIMESTAMP, TEXT))
+        .await?;
+
+    let res = stream::iter(geos)
+        .map(|geo| {
+            let stmt = &stmt;
+            async move {
+                let params: &[&dyn postgres_types::ToSql] = params!(last_check, geo);
+                conn.query_raw(stmt, params.iter().map(|x| *x)).await
+            }
+        })
+        .buffer_unordered(CONCURRENT_REQS)
+        .try_flatten()
+        .try_collect()
+        .await?;
+
+    Ok(res)
+}
+
+async fn raw_get_symptoms(conn: &Client, id: &str) -> Result<Option<Row>, Error> {
+    let stmt = conn
+        .prepare_typed(sql!("get_symptoms"), types!(TEXT))
+        .await?;
+
+    Ok(conn.query_opt(&stmt, params!(id)).await?)
 }

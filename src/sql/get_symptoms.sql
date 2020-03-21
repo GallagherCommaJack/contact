@@ -3,5 +3,4 @@ SELECT
 FROM
   symptoms
 WHERE
-  id = $id
-  
+  id = $1  

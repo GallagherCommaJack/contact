@@ -175,9 +175,11 @@ dependencies = [
  "anyhow",
  "bytes",
  "chrono",
+ "deadpool-postgres",
  "deadpool-redis",
  "futures 0.3.4",
  "once_cell",
+ "postgres-types",
  "redis",
  "serde",
  "serde_json",
@@ -229,6 +231,22 @@ dependencies = [
  "num_cpus",
  "serde",
  "tokio",
+]
+
+[[package]]
+name = "deadpool-postgres"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45575d9acf1535dddcfc5841fd8f1776287bdc328f8d9e76531f4dfd2eb9788f"
+dependencies = [
+ "async-trait",
+ "config",
+ "deadpool",
+ "futures 0.3.4",
+ "log 0.4.8",
+ "serde",
+ "tokio",
+ "tokio-postgres",
 ]
 
 [[package]]
@@ -996,6 +1014,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e634590e8812c500088d88db721195979223dabb05149f43cb50931d0ff5865d"
 dependencies = [
  "bytes",
+ "chrono",
  "fallible-iterator",
  "postgres-protocol",
 ]
