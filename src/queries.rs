@@ -9,9 +9,9 @@ use tokio_postgres::{types::Type, Row, RowStream};
 
 const CONCURRENT_REQS: usize = 10;
 
-pub async fn get_interactions<'a>(
-    conn: &'a Client,
-    last_check: DateTime<Utc>,
+pub async fn get_interactions<Tz: TimeZone>(
+    conn: &Client,
+    last_check: DateTime<Tz>,
     geos: &[&str],
     interaction_ids: &[&str],
 ) -> Result<Vec<String>, Error> {
@@ -32,10 +32,7 @@ pub async fn get_interactions<'a>(
     Ok(res)
 }
 
-pub async fn confirm_interactions<'a>(
-    conn: &'a Client,
-    uuids: &[&str],
-) -> Result<Vec<String>, Error> {
+pub async fn confirm_interactions(conn: &Client, uuids: &[&str]) -> Result<Vec<String>, Error> {
     let stmt = conn
         .prepare_typed(sql!("confirm_interactions"), types!(TEXT_ARRAY))
         .await?;
@@ -71,6 +68,27 @@ pub async fn get_symptoms(conn: &Client, id: &str) -> Result<Vec<Symptom>, Error
             })
         })
         .try_collect()
+        .await?;
+
+    Ok(res)
+}
+
+pub async fn add_case<Tz1: TimeZone, Tz2: TimeZone, Tz3: TimeZone>(
+    conn: &Client,
+    id: &str,
+    ts_exposure: Option<DateTime<Tz1>>,
+    ts_symptomatic: DateTime<Tz2>,
+    ts_resolved: Option<DateTime<Tz3>>,
+) -> Result<u64, Error> {
+    let stmt = conn
+        .prepare_typed(
+            sql!("add_case"),
+            types!(TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ),
+        )
+        .await?;
+
+    let res = conn
+        .execute(&stmt, params!(id, ts_exposure, ts_symptomatic, ts_resolved))
         .await?;
 
     Ok(res)
