@@ -128,3 +128,13 @@ pub async fn add_symptoms(
 
     Ok(())
 }
+
+pub async fn clear_old_interactions(conn: &Client) -> Result<u64, Error> {
+    let stmt = conn
+        .prepare_typed(sql!("clear_old_interactions"), types!())
+        .await?;
+
+    let res = conn.execute(&stmt, params!()).await?;
+
+    Ok(res)
+}
