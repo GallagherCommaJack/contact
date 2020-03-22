@@ -138,3 +138,45 @@ pub async fn clear_old_interactions(conn: &Client) -> Result<u64, Error> {
 
     Ok(res)
 }
+
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub struct Exposure<'a> {
+    donor: &'a str,
+    recipient: &'a str,
+    total_minutes: Option<i32>,
+    close: Option<bool>,
+    certainty: Option<f64>,
+}
+
+pub async fn confirm_exposures(conn: &Client, exposures: &[Exposure<'_>]) -> Result<(), Error> {
+    let stmt = conn
+        .prepare_typed(
+            sql!("confirm_exposures"),
+            types!(TEXT, TEXT, INT4, BOOL, FLOAT8),
+        )
+        .await?;
+
+    let stmt = &stmt;
+    stream::iter(exposures)
+        .map(|x| Ok::<_, Error>(*x))
+        .try_for_each_concurrent(
+            CONCURRENT_REQS,
+            move |Exposure {
+                      donor,
+                      recipient,
+                      total_minutes,
+                      close,
+                      certainty,
+                  }| async move {
+                conn.execute(
+                    stmt,
+                    params!(donor, recipient, total_minutes, close, certainty),
+                )
+                .await?;
+                Ok(())
+            },
+        )
+        .await?;
+
+    Ok(())
+}
