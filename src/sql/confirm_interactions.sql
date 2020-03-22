@@ -3,4 +3,4 @@ SELECT DISTINCT
 FROM
   interactions
 WHERE
-  id IN $1
+  id IN ($1)
