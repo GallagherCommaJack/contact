@@ -9,9 +9,9 @@ use tokio_postgres::{types::Type, Row, RowStream};
 
 const CONCURRENT_REQS: usize = 10;
 
-pub async fn get_interactions<Tz: TimeZone>(
+pub async fn get_interactions(
     conn: &Client,
-    last_check: DateTime<Tz>,
+    last_check: DateTime<Utc>,
     geos: &[&str],
     interaction_ids: &[&str],
 ) -> Result<Vec<String>, Error> {
@@ -73,13 +73,13 @@ pub async fn get_symptoms(conn: &Client, id: &str) -> Result<Vec<Symptom>, Error
     Ok(res)
 }
 
-pub async fn add_case<Tz1: TimeZone, Tz2: TimeZone, Tz3: TimeZone>(
+pub async fn add_case(
     conn: &Client,
     id: &str,
-    ts_exposure: Option<DateTime<Tz1>>,
-    ts_symptomatic: DateTime<Tz2>,
-    ts_resolved: Option<DateTime<Tz3>>,
-) -> Result<u64, Error> {
+    ts_exposure: Option<DateTime<Utc>>,
+    ts_symptomatic: DateTime<Utc>,
+    ts_resolved: Option<DateTime<Utc>>,
+) -> Result<(), Error> {
     let stmt = conn
         .prepare_typed(
             sql!("add_case"),
@@ -87,11 +87,10 @@ pub async fn add_case<Tz1: TimeZone, Tz2: TimeZone, Tz3: TimeZone>(
         )
         .await?;
 
-    let res = conn
-        .execute(&stmt, params!(id, ts_exposure, ts_symptomatic, ts_resolved))
+    conn.execute(&stmt, params!(id, ts_exposure, ts_symptomatic, ts_resolved))
         .await?;
 
-    Ok(res)
+    Ok(())
 }
 
 pub async fn add_client(
@@ -99,12 +98,33 @@ pub async fn add_client(
     id: &str,
     jwt: Option<&str>,
     platform: Option<&str>,
-) -> Result<u64, Error> {
+) -> Result<(), Error> {
     let stmt = conn
         .prepare_typed(sql!("add_client"), types!(TEXT, TEXT, TEXT))
         .await?;
 
-    let res = conn.execute(&stmt, params!(id, jwt, platform)).await?;
+    conn.execute(&stmt, params!(id, jwt, platform)).await?;
 
-    Ok(res)
+    Ok(())
+}
+
+pub async fn add_symptoms(
+    conn: &Client,
+    id: &str,
+    symptoms: &[(&str, DateTime<Utc>)],
+) -> Result<(), Error> {
+    let stmt = conn
+        .prepare_typed(sql!("add_symptom"), types!(TEXT, TEXT, TIMESTAMPTZ))
+        .await?;
+
+    let stmt = &stmt;
+    stream::iter(symptoms)
+        .map(Ok::<_, Error>)
+        .try_for_each_concurrent(CONCURRENT_REQS, move |(symptom, ts)| async move {
+            conn.execute(stmt, params!(id, symptom, ts)).await?;
+            Ok(())
+        })
+        .await?;
+
+    Ok(())
 }
