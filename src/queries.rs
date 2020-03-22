@@ -1,17 +1,20 @@
 use super::*;
 use chrono::*;
 use deadpool_postgres::ClientWrapper as Client;
-use futures::stream::{self, Stream, StreamExt, TryStreamExt};
+use futures::{
+    future,
+    stream::{self, Stream, StreamExt, TryStreamExt},
+};
 use tokio_postgres::{types::Type, Row, RowStream};
 
 const CONCURRENT_REQS: usize = 10;
 
-async fn raw_get_interactions<'a>(
+pub async fn get_interactions<'a>(
     conn: &'a Client,
     last_check: DateTime<Utc>,
     geos: &[&str],
     interaction_ids: &[&str],
-) -> Result<Vec<Row>, Error> {
+) -> Result<Vec<String>, Error> {
     let stmt = conn
         .prepare_typed(
             sql!("get_interactions"),
@@ -19,25 +22,56 @@ async fn raw_get_interactions<'a>(
         )
         .await?;
 
-    let res = conn
-        .query(&stmt, params!(last_check, geos, interaction_ids))
+    let params: &[&dyn postgres_types::ToSql] = params!(last_check, geos, interaction_ids);
+    let rows = conn.query_raw(&stmt, params.iter().map(|x| *x)).await?;
+    let res = rows
+        .and_then(|row| future::ready(row.try_get::<_, String>("id")))
+        .try_collect()
         .await?;
 
     Ok(res)
 }
 
-async fn raw_confirm_interactions<'a>(conn: &'a Client, uuids: &[&str]) -> Result<Vec<Row>, Error> {
+pub async fn confirm_interactions<'a>(
+    conn: &'a Client,
+    uuids: &[&str],
+) -> Result<Vec<String>, Error> {
     let stmt = conn
-        .prepare_typed(sql!("confirm_interactions"), types!(TEXT))
+        .prepare_typed(sql!("confirm_interactions"), types!(TEXT_ARRAY))
         .await?;
 
-    Ok(conn.query(&stmt, params!(uuids)).await?)
+    let params: &[&dyn postgres_types::ToSql] = params!(uuids);
+    let rows = conn.query_raw(&stmt, params.iter().map(|x| *x)).await?;
+    let res = rows
+        .and_then(|row| future::ready(row.try_get::<_, String>("case_id")))
+        .try_collect()
+        .await?;
+
+    Ok(res)
 }
 
-async fn raw_get_symptoms(conn: &Client, id: &str) -> Result<Option<Row>, Error> {
+#[derive(Serialize, Deserialize)]
+pub struct Symptom {
+    pub symptom: String,
+    pub ts: DateTime<Utc>,
+}
+
+pub async fn get_symptoms(conn: &Client, id: &str) -> Result<Vec<Symptom>, Error> {
     let stmt = conn
         .prepare_typed(sql!("get_symptoms"), types!(TEXT))
         .await?;
 
-    Ok(conn.query_opt(&stmt, params!(id)).await?)
+    let params: &[&dyn postgres_types::ToSql] = params!(id);
+    let rows = conn.query_raw(&stmt, params.iter().map(|x| *x)).await?;
+    let res = rows
+        .and_then(|row| async move {
+            Ok(Symptom {
+                symptom: row.try_get("symptom")?,
+                ts: row.try_get("ts")?,
+            })
+        })
+        .try_collect()
+        .await?;
+
+    Ok(res)
 }
