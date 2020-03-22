@@ -93,3 +93,18 @@ pub async fn add_case<Tz1: TimeZone, Tz2: TimeZone, Tz3: TimeZone>(
 
     Ok(res)
 }
+
+pub async fn add_client(
+    conn: &Client,
+    id: &str,
+    jwt: Option<&str>,
+    platform: Option<&str>,
+) -> Result<u64, Error> {
+    let stmt = conn
+        .prepare_typed(sql!("add_client"), types!(TEXT, TEXT, TEXT))
+        .await?;
+
+    let res = conn.execute(&stmt, params!(id, jwt, platform)).await?;
+
+    Ok(res)
+}
