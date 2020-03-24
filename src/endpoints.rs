@@ -21,7 +21,9 @@ pub mod report_symptoms {
 
     #[derive(Serialize, Deserialize, Debug)]
     pub struct Req<'a> {
+        #[serde(borrow)]
         symptoms: Vec<&'a str>,
+        #[serde(borrow)]
         case_id: &'a str,
     }
 
@@ -36,14 +38,17 @@ pub mod report_symptoms {
             let Req { symptoms, case_id } = self;
 
             let ts = chrono::Utc::now();
-            let time_key = time_key(ts);
-            let case_key = case_key(case_id);
+            let time_key = &time_key(ts);
 
             let mut pipe = redis::pipe();
+
+            // for case_id in case_ids {
+            let case_key = &case_key(case_id);
             for symptom in symptoms {
-                pipe.rpush(case_key.as_str(), symptom);
+                pipe.rpush(case_key, symptom);
             }
             pipe.sadd(time_key, case_id);
+            // }
 
             let mut conn = POOL.get().await?;
             let success = pipe
