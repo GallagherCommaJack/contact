@@ -9,6 +9,18 @@ fn time_key(ts: chrono::DateTime<Utc>) -> String {
     format!("{}", ts.format("time:%Y:%j:%H"))
 }
 
+fn time_to_str<Tz>(ts: chrono::DateTime<Tz>) -> String
+where
+    Tz: TimeZone,
+    Tz::Offset: std::fmt::Display,
+{
+    ts.to_rfc3339()
+}
+
+fn str_to_time(st: &str) -> Result<chrono::DateTime<Utc>, Error> {
+    Ok(DateTime::parse_from_rfc3339(st)?.into())
+}
+
 fn time_keys_since(ts: chrono::DateTime<Utc>) -> impl Iterator<Item = String> {
     let num_hours = Utc::now().signed_duration_since(ts).num_hours();
     (0..num_hours)
@@ -16,7 +28,7 @@ fn time_keys_since(ts: chrono::DateTime<Utc>) -> impl Iterator<Item = String> {
         .map(move |dur| time_key(ts + dur))
 }
 
-pub mod report_symptoms {
+pub mod report_new_symptoms {
     use super::*;
 
     #[derive(Serialize, Deserialize, Debug)]
@@ -45,7 +57,7 @@ pub mod report_symptoms {
             // for case_id in case_ids {
             let case_key = &case_key(case_id);
             for symptom in symptoms {
-                pipe.rpush(case_key, symptom);
+                pipe.rpush(case_key, (time_to_str(ts), symptom));
             }
             pipe.sadd(time_key, case_id);
             // }
@@ -71,7 +83,7 @@ pub mod get_symptoms {
 
     #[derive(Serialize, Deserialize, Debug)]
     pub struct Resp {
-        symptoms: Vec<String>,
+        symptoms: Vec<(chrono::DateTime<Utc>, String)>,
     }
 
     impl<'a> Req<'a> {
@@ -80,8 +92,14 @@ pub mod get_symptoms {
             let case_key = case_key(case_id);
             let cmd = redis::Cmd::lrange(case_key, 0, -1);
             let mut conn = POOL.get().await?;
+            let reports: Vec<(String, String)> =
+                cmd.query_async(conn.deref_mut().deref_mut()).await?;
+
             Ok(Resp {
-                symptoms: cmd.query_async(conn.deref_mut().deref_mut()).await?,
+                symptoms: reports
+                    .into_iter()
+                    .map(|(ts, sym)| Ok((str_to_time(&ts)?, sym)))
+                    .collect::<Result<Vec<_>, Error>>()?,
             })
         }
     }

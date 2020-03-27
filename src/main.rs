@@ -47,7 +47,7 @@ macro_rules! mk_handler {
 
 #[tokio::main]
 async fn main() {
-    let routes = mk_handler!(report_symptoms)
+    let routes = mk_handler!(report_new_symptoms)
         .or(mk_handler!(get_symptoms))
         .or(mk_handler!(get_cases));
 
